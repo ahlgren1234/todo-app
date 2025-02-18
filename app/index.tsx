@@ -1,7 +1,9 @@
-import { FlatList, Image, KeyboardAvoidingView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { FlatList, Image, Keyboard, KeyboardAvoidingView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from '@expo/vector-icons';
 import { Checkbox } from 'expo-checkbox';
+import { useEffect, useState } from "react";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type ToDoType = {
   id: number;
@@ -44,6 +46,65 @@ export default function Index() {
     },
   ];
 
+  const [todos, setTodos] = useState<ToDoType[]>([]);
+  const [todoText, setTodoText] = useState<string>("");
+
+  useEffect(() => {
+    const getTodos = async () => {
+      try {
+        const todos = await AsyncStorage.getItem('my-todo');
+        if (todos !== null) {
+          setTodos(JSON.parse(todos));
+        }
+      } catch (error) {
+        console.log(error);
+      }
+    }
+    getTodos();
+  }, [])
+
+  const addTodo = async () => {
+    try {
+      const newTodo = {
+        id: Math.random(),
+        title: todoText,
+        isDone: false,
+      }
+      todos.push(newTodo);
+      setTodos(todos);
+      await AsyncStorage.setItem('my-todo', JSON.stringify(todos));
+      setTodoText('');
+      Keyboard.dismiss();
+    } catch (error) { 
+      console.log(error);
+    }
+  }
+
+  const deleteTodo = async (id: number) => {
+    try {
+      const newTodos = todos.filter((todo) => todo.id !== id);
+      await AsyncStorage.setItem("my-todo", JSON.stringify(newTodos));
+      setTodos(newTodos);
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
+  const handleDone = async (id: number) => {
+    try {
+      const newTodos = todos.map((todo) => {
+        if (todo.id === id) {
+          todo.isDone = !todo.isDone;
+        }
+        return todo;
+      });
+      await AsyncStorage.setItem("my-todo", JSON.stringify(newTodos));
+      setTodos(newTodos);
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
   return (
     <SafeAreaView
       style={styles.container}
@@ -70,16 +131,22 @@ export default function Index() {
       </View>
 
       <FlatList
-        data={todoData}
+        data={[...todos].reverse()}
         keyExtractor={(item) => item.id.toString()}
         renderItem={({ item }) => (
-          <ToDoItem todo={item} />
+          <ToDoItem todo={item} deleteTodo={deleteTodo} handleTodo={handleDone} />
         ) }
       />
 
       <KeyboardAvoidingView style={ styles.footer } behavior="padding" keyboardVerticalOffset={10}>
-        <TextInput placeholder="Add New ToDo" style={ styles.newTodoInput} />
-        <TouchableOpacity style={ styles.addButton} onPress={() => { }}>
+        <TextInput
+          placeholder="Add New ToDo"
+          value={todoText}
+          onChangeText={(text) => setTodoText(text)}
+          style={styles.newTodoInput}
+          autoCorrect={false}
+        />
+        <TouchableOpacity style={ styles.addButton} onPress={() => { addTodo() }}>
           <Ionicons name="add" size={34} color={'#fff'} />
         </TouchableOpacity>
       </KeyboardAvoidingView>
@@ -87,15 +154,32 @@ export default function Index() {
   );
 }
 
-const ToDoItem = ({ todo }: {todo: ToDoType}) => (
+const ToDoItem = ({
+  todo,
+  deleteTodo,
+  handleTodo
+}: {
+    todo: ToDoType;
+    deleteTodo: (id: number) => void;
+    handleTodo: (id: number) => void;
+}) => (
   <View style={styles.todoContainer}>
     <View style={styles.todoInfoContainer}>
-      <Checkbox value={ todo.isDone} color={todo.isDone ? '#4630EB' : undefined} />
+      <Checkbox
+        value={todo.isDone}
+        onValueChange={() => handleTodo(todo.id)}
+        color={todo.isDone ? '#4630EB' : undefined}
+      />
       <Text style={[styles.todoText, todo.isDone && {textDecorationLine: 'line-through'}]}>
         {todo.title}
       </Text>
     </View>
-    <TouchableOpacity onPress={() => { alert('Deleted ' + todo.id)}}>
+    <TouchableOpacity
+      onPress={() => {
+        deleteTodo(todo.id);
+        alert('Deleted ' + todo.id);
+      }}
+    >
       <Ionicons name="trash" size={24} color={'red'} />
     </TouchableOpacity>
   </View>
