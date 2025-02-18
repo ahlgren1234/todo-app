@@ -1,3 +1,11 @@
+## Small ToDo app in React Native
+Uses Local storage to store todos.
+
+Screenshot:
+![Screenshot](images/screenshot.png "Screenshot")
+
+-----------------------------------
+
 # Welcome to your Expo app 👋
 
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
