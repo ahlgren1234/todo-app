@@ -1,4 +1,4 @@
-import { FlatList, Image, Keyboard, KeyboardAvoidingView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { FlatList, Image, Keyboard, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from '@expo/vector-icons';
 import { Checkbox } from 'expo-checkbox';
@@ -48,6 +48,8 @@ export default function Index() {
 
   const [todos, setTodos] = useState<ToDoType[]>([]);
   const [todoText, setTodoText] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [oldTodos, setOldTodos] = useState<ToDoType[]>([]);
 
   useEffect(() => {
     const getTodos = async () => {
@@ -55,6 +57,7 @@ export default function Index() {
         const todos = await AsyncStorage.getItem('my-todo');
         if (todos !== null) {
           setTodos(JSON.parse(todos));
+          setOldTodos(JSON.parse(todos));
         }
       } catch (error) {
         console.log(error);
@@ -72,6 +75,7 @@ export default function Index() {
       }
       todos.push(newTodo);
       setTodos(todos);
+      setOldTodos(todos);
       await AsyncStorage.setItem('my-todo', JSON.stringify(todos));
       setTodoText('');
       Keyboard.dismiss();
@@ -85,6 +89,7 @@ export default function Index() {
       const newTodos = todos.filter((todo) => todo.id !== id);
       await AsyncStorage.setItem("my-todo", JSON.stringify(newTodos));
       setTodos(newTodos);
+      setOldTodos(newTodos);
     } catch (error) {
       console.log(error)
     }
@@ -100,10 +105,24 @@ export default function Index() {
       });
       await AsyncStorage.setItem("my-todo", JSON.stringify(newTodos));
       setTodos(newTodos);
+      setOldTodos(newTodos);
     } catch (error) {
       console.log(error)
     }
   }
+
+  const onSearch = (query: string) => {
+    if (query == "") {
+      setTodos(oldTodos);
+    } else {
+      const filteredTodos = todos.filter((todo) => todo.title.toLowerCase().includes(query.toLowerCase()));
+      setTodos(filteredTodos);
+    }
+  }
+
+  useEffect(() => { 
+    onSearch(searchQuery);
+  }, [searchQuery])
 
   return (
     <SafeAreaView
@@ -124,7 +143,8 @@ export default function Index() {
       <View style={ styles.searchBar}>
         <Ionicons name="search" size={24} color={'#333'} />
         <TextInput
-          placeholder="Search"
+          value={searchQuery}
+          onChangeText={(text) => setSearchQuery(text)}
           style={styles.searchInput}
           clearButtonMode="always"
         />
@@ -200,7 +220,9 @@ const styles = StyleSheet.create({
   searchBar: {
     flexDirection: 'row',
     backgroundColor: '#fff',
-    padding: 16,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    paddingVertical: Platform.OS === 'ios' ? 16 : 8,
     borderRadius: 10,
     gap: 10,
     marginBottom: 20,
